@@ -107,7 +107,7 @@ def verify_preprocessing(data_dir="processed_data"):
             print(f"  Imbalance ratio: {imbalance_ratio:.2f}x")  # Display the imbalance ratio
             
             # Give feedback based on imbalance ratio threshold
-            if imbalance_ratio > 3:
+            if imbalance_ratio > 3: # ratio is 3 because the largest class is 3 times the smallest class
                 print("  ⚠️  Significant class imbalance detected!")
                 print("     Consider using class weights during training.")
             else:

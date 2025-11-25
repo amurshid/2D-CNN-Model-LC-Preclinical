@@ -1,0 +1,46 @@
+Lost_Image_Number,Sample_Index,True_Label,Predicted_Label
+0,11,adenocarcinoma,Normal cases
+1,12,adenocarcinoma,Normal cases
+2,13,adenocarcinoma,squamous cell carcinoma
+3,16,adenocarcinoma,large cell carcinoma
+4,17,adenocarcinoma,squamous cell carcinoma
+5,25,adenocarcinoma,large cell carcinoma
+6,27,adenocarcinoma,squamous cell carcinoma
+7,28,adenocarcinoma,large cell carcinoma
+8,36,adenocarcinoma,large cell carcinoma
+9,38,adenocarcinoma,large cell carcinoma
+10,39,adenocarcinoma,squamous cell carcinoma
+11,44,adenocarcinoma,squamous cell carcinoma
+12,49,adenocarcinoma,large cell carcinoma
+13,51,Benign cases,Normal cases
+14,52,Benign cases,Normal cases
+15,53,Benign cases,Normal cases
+16,54,Benign cases,Normal cases
+17,55,Benign cases,Normal cases
+18,56,Benign cases,Normal cases
+19,57,Benign cases,Normal cases
+20,58,Benign cases,Normal cases
+21,59,Benign cases,Normal cases
+22,60,Benign cases,Normal cases
+23,61,Benign cases,Normal cases
+24,62,Benign cases,Normal cases
+25,63,Benign cases,Normal cases
+26,64,Benign cases,Normal cases
+27,65,Benign cases,Normal cases
+28,66,Benign cases,Normal cases
+29,67,Benign cases,Normal cases
+30,68,Benign cases,Normal cases
+31,69,large cell carcinoma,adenocarcinoma
+32,80,large cell carcinoma,squamous cell carcinoma
+33,84,large cell carcinoma,adenocarcinoma
+34,85,large cell carcinoma,adenocarcinoma
+35,92,large cell carcinoma,adenocarcinoma
+36,199,squamous cell carcinoma,adenocarcinoma
+37,201,squamous cell carcinoma,Normal cases
+38,202,squamous cell carcinoma,Normal cases
+39,203,squamous cell carcinoma,adenocarcinoma
+40,204,squamous cell carcinoma,adenocarcinoma
+41,221,squamous cell carcinoma,adenocarcinoma
+42,224,squamous cell carcinoma,adenocarcinoma
+43,227,squamous cell carcinoma,adenocarcinoma
+44,230,squamous cell carcinoma,adenocarcinoma

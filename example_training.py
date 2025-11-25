@@ -1,4 +1,3 @@
-# Start of Selection
 # ------------------------------------------------------------------------
 # Example Training Script for Lung Cancer CT Scan Classification
 # This script demonstrates how to train a 2D CNN model using the preprocessed data.
@@ -18,7 +17,15 @@ from torch.utils.data import DataLoader                # Import DataLoader utili
 from data_loader import create_data_loaders            # Custom function to create data loaders for this dataset/project
 import numpy as np                                     # Import NumPy library for numerical operations and array handling
 from tqdm import tqdm                                  # Progress bar library to make loops visually trackable
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend (saves to file without requiring display)
 import matplotlib.pyplot as plt                        # Matplotlib for plotting training curves (loss, accuracy, etc.)
+
+# Additional imports for metrics, confusion matrix, and tabular results
+from sklearn.metrics import (
+    classification_report, confusion_matrix, precision_recall_fscore_support, accuracy_score
+)
+import pandas as pd
 
 # -------------------- Define the Neural Network Model --------------------
 
@@ -234,6 +241,137 @@ def train_model(data_dir="processed_data", num_epochs=20, batch_size=32, learnin
     # ---- Plot the loss/accuracy training history ----
     plot_training_history(history)                                            # Draw and save the curves
 
+    # ---- ADDED: Advanced Metrics, Graphs, and Truth Table after Testing ----
+    print('\nCalculating per-class metrics and generating plots...')
+
+    # 1. Obtain predictions, true labels, losses, and image indices for the test set
+    all_labels = []
+    all_preds = []
+    all_losses = []
+    all_indices = []
+    test_loss_per_sample = []
+
+    model.eval()
+    with torch.no_grad():
+        for batch_idx, batch in enumerate(tqdm(test_loader, desc="Collecting Test Results")):
+            # Try to access indices if available (e.g. test_loader returns (img, label, idx))
+            if len(batch) == 3:
+                images, labels, indices = batch
+                all_indices.extend(indices.cpu().numpy())
+            else:
+                images, labels = batch
+                indices = np.arange(len(labels)) + len(all_labels)
+                all_indices.extend(indices)
+            images, labels = images.to(device), labels.to(device)
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            test_loss_per_sample.extend([loss.item()] * len(labels))
+            _, preds = torch.max(outputs.data, 1)
+            all_labels.extend(labels.cpu().numpy())
+            all_preds.extend(preds.cpu().numpy())
+
+    all_labels = np.array(all_labels)
+    all_preds = np.array(all_preds)
+    test_loss_per_sample = np.array(test_loss_per_sample)
+    all_indices = np.array(all_indices)
+
+    # 2. Compute classification report and per-class metrics
+    report = classification_report(all_labels, all_preds, target_names=class_names, output_dict=True, zero_division=0)
+    confmat = confusion_matrix(all_labels, all_preds)
+    support = np.array([report[c]['support'] for c in class_names])
+    precision = np.array([report[c]['precision'] for c in class_names])
+    recall    = np.array([report[c]['recall'] for c in class_names])
+    f1score   = np.array([report[c]['f1-score'] for c in class_names])
+    accuracy  = np.array([confmat.diagonal() / support])  # Per-class accuracy
+
+    # 3. Plot confusion matrix, per-class metrics bar charts, and per-class loss
+    # (a) Confusion matrix plot
+    fig_cm, ax_cm = plt.subplots(figsize=(8, 8))
+    im = ax_cm.imshow(confmat, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.title('Confusion Matrix')
+    plt.colorbar(im, ax=ax_cm)
+    tick_marks = np.arange(len(class_names))
+    ax_cm.set_xticks(tick_marks)
+    ax_cm.set_yticks(tick_marks)
+    ax_cm.set_xticklabels(class_names, rotation=45, ha='right')
+    ax_cm.set_yticklabels(class_names)
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    thresh = confmat.max() / 2.
+    for i in range(confmat.shape[0]):
+        for j in range(confmat.shape[1]):
+            ax_cm.text(j, i, format(confmat[i, j], 'd'),
+                       ha="center", va="center",
+                       color="white" if confmat[i, j] > thresh else "black")
+    plt.tight_layout()
+    plt.savefig('confusion_matrix.png', bbox_inches='tight')
+    plt.close(fig_cm)
+    print("Confusion matrix plot saved as 'confusion_matrix.png'.")
+
+    # (b) Per-class precision, recall, f1-score, accuracy bar chart
+    fig, axes = plt.subplots(1, 4, figsize=(20, 4))
+    axes[0].bar(class_names, precision)
+    axes[0].set_title('Per-Class Precision')
+    axes[0].set_ylabel('Precision')
+    axes[1].bar(class_names, recall)
+    axes[1].set_title('Per-Class Recall')
+    axes[1].set_ylabel('Recall')
+    axes[2].bar(class_names, f1score)
+    axes[2].set_title('Per-Class F1-score')
+    axes[2].set_ylabel('F1-score')
+    axes[3].bar(class_names, accuracy[0])
+    axes[3].set_title('Per-Class Accuracy')
+    axes[3].set_ylabel('Accuracy')
+    for ax in axes:
+        ax.set_xticklabels(class_names, rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig('per_class_metrics.png', bbox_inches='tight')
+    plt.close(fig)
+    print("Per-class metrics bar chart saved as 'per_class_metrics.png'.")
+
+    # (c) Per-class average loss plot (approximate)
+    class_loss = []
+    for cid in range(len(class_names)):
+        indices_class = np.where(all_labels == cid)[0]
+        class_losses = []
+        for idx in indices_class:
+            # Individual loss: if cross entropy is per batch, approximate by batch average
+            # here we just take average loss for batch, so all in batch get same value
+            class_losses.append(test_loss_per_sample[idx])
+        class_loss.append(np.mean(class_losses) if class_losses else 0)
+    plt.figure(figsize=(8, 4))
+    plt.bar(class_names, class_loss)
+    plt.ylabel('Average Loss')
+    plt.title('Per-Class Average Loss')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig('per_class_avg_loss.png', bbox_inches='tight')
+    plt.close()
+    print("Per-class average loss plot saved as 'per_class_avg_loss.png'.")
+
+    # (d) Precision-Recall curve per class (optional if you want, more complex for multi-class)
+    # Can be added if more metrics required
+
+    # 4. Generate and save a truth table for misclassified images (images "lost")
+    # If test_loader yields the path or index, record that
+    lost_samples = []
+    for i, (true_label, pred_label, idx) in enumerate(zip(all_labels, all_preds, all_indices)):
+        if true_label != pred_label:
+            lost_samples.append({'Sample_Index': idx, 
+                                'True_Label': class_names[true_label], 
+                                'Predicted_Label': class_names[pred_label]})
+    truth_table_df = pd.DataFrame(lost_samples)
+    truth_table_df.index.name = 'Lost_Image_Number'
+    truth_table_df.to_csv('misclassified_truth_table.csv')
+    print(f"Truth table for lost images saved to 'misclassified_truth_table.csv' ({len(lost_samples)} images lost).")
+
+    # 5. Print brief report summary
+    print("\nClassification Report:")
+    print(classification_report(all_labels, all_preds, target_names=class_names, zero_division=0))
+    print(f"\nTotal test samples: {len(all_labels)}")
+    print(f"Number of misclassified samples: {len(lost_samples)}")
+    print("Additional evaluation plots and truth table saved to disk.")
+
     return model, history                                                    # Return trained model and stats
 
 # -------------------- Plotting Function for Training History --------------------
@@ -267,6 +405,7 @@ def plot_training_history(history):
     plt.tight_layout()
     plt.savefig('training_history.png', dpi=300, bbox_inches='tight')        # Save the plot as a static PNG file
     print("\nTraining history saved to 'training_history.png'")              # Tell user where to find figure
+    plt.close()  # Close the figure to free memory
 
 # -------------------- Script Entry Point --------------------
 
@@ -280,4 +419,3 @@ if __name__ == "__main__":
         learning_rate=0.001                  # Initial learning rate for Adam optimizer
     )
 
-# End of Selection
