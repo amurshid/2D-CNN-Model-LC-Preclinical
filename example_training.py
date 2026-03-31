@@ -19,6 +19,7 @@ from data_loader import create_data_loaders            # Custom function to crea
 import numpy as np                                     # Import NumPy library for numerical operations and array handling
 from tqdm import tqdm                                  # Progress bar library to make loops visually trackable
 import matplotlib.pyplot as plt                        # Matplotlib for plotting training curves (loss, accuracy, etc.)
+from losses import FocalLoss                           # Custom Focal Loss implementation for handling class imbalance
 
 # -------------------- Define the Neural Network Model --------------------
 
@@ -173,12 +174,34 @@ def train_model(data_dir="processed_data", num_epochs=20, batch_size=32, learnin
     model = SimpleLungCancerCNN(num_classes=len(class_names))        # Use number of classes from data loader
     model = model.to(device)                                         # Move model to computation device
     # ---- Loss function, optimizer and learning rate scheduler ----
-    criterion = nn.CrossEntropyLoss()                                # Use cross-entropy for multi-class classification
+
+    # Compute per-class alpha (inverse-frequency) directly from the training dataset
+    try:
+        # get_class_weights() returns a dict {label_index: weight}
+        class_weight_dict = train_loader.dataset.get_class_weights()
+        alpha_list = [float(class_weight_dict[i]) for i in range(len(class_names))]
+    except Exception:
+        # fallback to uniform weights if something goes wrong
+        alpha_list = [1.0] * len(class_names)
+
+    # Normalize to mean==1.0 so loss scale stays comparable to CrossEntropy
+    import numpy as np
+    raw = np.array(alpha_list, dtype=np.float32)
+    alpha_norm = (raw / (raw.mean() + 1e-12)).tolist()
+
+    # Convert to tensor and move to device
+    alpha_tensor = torch.tensor(alpha_norm, dtype=torch.float32).to(device)
+
+    # Instantiate focal loss (your FocalLoss expects logits)
+    criterion = FocalLoss(gamma=2.0, alpha=alpha_tensor)
+
+    #criterion = nn.CrossEntropyLoss()                                # Use cross-entropy for multi-class classification
+
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)  # Adam optimizer with weight decay regularization
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='min', factor=0.5, patience=3
     )                                                               # Scheduler reduces learning rate when validation loss plateaus
-
+    
     # ---- Initialize dictionary to track loss/accuracy through training ----
     history = {
         'train_loss': [],

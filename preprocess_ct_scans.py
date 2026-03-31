@@ -4,13 +4,11 @@ This script preprocesses CT scan images for lung cancer classification.
 """
 
 # Import standard and third-party libraries
-import os                                     # For operating system functionalities (file handling)
 import cv2                                    # OpenCV for image processing (reading, resizing, augmentation)
 import numpy as np                            # For numerical operations on arrays
 from PIL import Image                         # PIL for handling image loading/saving, especially various formats
 from pathlib import Path                      # For convenient and reliable path manipulations
 from tqdm import tqdm                         # For displaying progress bars during processing
-import shutil                                 # For file operations like copying/removing (not used in this core script)
 from sklearn.model_selection import train_test_split # For splitting dataset into train/val/test
 import json                                   # For saving/loading metadata as JSON
 

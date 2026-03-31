@@ -5,7 +5,7 @@ Provides utilities for loading and batching preprocessed CT scan images.
 """
 
 # ---- Imports ----
-import os                                        # Import os: Interface to interact with the operating system, not actually used below but often kept for extension or directory/filework.
+import cv2                                             # Import cv2 (OpenCV) here, since it's only needed for augmentation operations
 import numpy as np                               # Import numpy: Fast multidimensional arrays, used for image manipulation and augmentations.
 from pathlib import Path                         # Import Path from pathlib: Convenient and robust path manipulations and filesystem navigation.
 from PIL import Image                            # Import Image from PIL: To open and manipulate images.
@@ -106,6 +106,7 @@ class CTScanDataset(Dataset):
             # -- Perform augmentation if enabled (for training) --
             if self.augment:
                 image = self._augment_image(image)           # Apply augmentation to image as a NumPy array.
+            image = np.ascontiguousarray(image)              # Make array contiguous before tensor conversion
             # -- Rearrange to PyTorch format (channels, height, width) and convert to Tensor --
             image = torch.from_numpy(image).permute(2, 0, 1).float()   # Change [H,W,C] to [C,H,W], and convert to float32 tensor
             # -- Apply user-provided transforms (e.g., additional normalization, color jitter, etc.), if any --
@@ -130,7 +131,6 @@ class CTScanDataset(Dataset):
         Returns:
             Augmented image as numpy array, same shape/type.
         """
-        import cv2                                             # Import cv2 (OpenCV) here, since it's only needed for augmentation operations
         # -- Horizontal flip with 50% probability --
         if np.random.random() > 0.5:
             image = np.fliplr(image)                            # Flip left-right
@@ -217,7 +217,6 @@ def create_data_loaders(data_dir, batch_size=32, num_workers=0, augment=True):
     # Compose list of class names (in order of integer label: 0, 1, 2, ...)
     class_names = [train_dataset.label_to_class[i] for i in range(len(train_dataset.class_mapping))]
     return train_loader, val_loader, test_loader, class_names
-
 
 # ---- If Run Directly: Simple Example Use Case and Print Shapes/Counts ----
 if __name__ == "__main__":
